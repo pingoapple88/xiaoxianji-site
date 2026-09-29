@@ -1,8 +1,8 @@
 window.XIAOXIANJI_BUILD_METADATA = Object.freeze({
   schema_version: "XJ-BUILD-METADATA-01",
-  page_revision: "b8eebc55dcb8e4012991c65c5191de8031c2344a",
-  parent: "dcb7bc8510b30a3c303be3df5af231c1830a3656",
-  rollback: "dcb7bc8510b30a3c303be3df5af231c1830a3656",
+  page_revision: "6c9c2f3318732fa81d805bb1500c6c75ad779df3",
+  parent: "b8eebc55dcb8e4012991c65c5191de8031c2344a",
+  rollback: "b8eebc55dcb8e4012991c65c5191de8031c2344a",
   branch: "main",
   stamped: true,
   mode: "DEMO_MOCK",

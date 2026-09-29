@@ -3,100 +3,129 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="校鮮集外部服務隔離測試台，展示物流標籤與付款狀態流程。">
-  <title>校鮮集｜外部服務隔離 UAT</title>
+  <meta name="description" content="校鮮集持久化隔離 UAT，操作物流標籤、付款狀態與稽核歷史。">
+  <title>校鮮集｜可操作隔離 UAT</title>
   <style>
-    :root{--bg:#0a2420;--card:#11352f;--line:#315a51;--gold:#d8b46a;--text:#edf5f1;--muted:#a8c2b9;--ok:#77d4a4}
-    *{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#071b18,#10372f);color:var(--text);font:15px/1.6 system-ui,sans-serif}
-    main{max-width:1050px;margin:auto;padding:28px 18px 60px}.top{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}
-    h1,h2{color:var(--gold);margin:.3em 0}.badge{border:1px solid var(--gold);border-radius:999px;padding:5px 10px;color:var(--gold)}
+    :root{--bg:#071b18;--card:#11352f;--line:#315a51;--gold:#e0bd70;--text:#edf5f1;--muted:#a8c2b9;--ok:#77d4a4;--warn:#f1c75b;--danger:#ff8c8c}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#061713,#10372f);color:var(--text);font:15px/1.55 system-ui,sans-serif}
+    main{max-width:1180px;margin:auto;padding:28px 18px 60px}.top,.statusbar{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}
+    h1,h2,h3{color:var(--gold);margin:.3em 0}.badge{border:1px solid var(--gold);border-radius:999px;padding:5px 10px;color:var(--gold);display:inline-block}
     select,input,button{font:inherit;border-radius:9px;border:1px solid var(--line);padding:10px;background:#081f1b;color:var(--text);width:100%}
-    button{background:var(--gold);color:#102b26;font-weight:800;cursor:pointer}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-    .card{background:rgba(17,53,47,.94);border:1px solid var(--line);border-radius:15px;padding:18px}.notice{padding:13px;border-left:4px solid var(--gold);background:#0c2d27;color:var(--muted)}
-    label{display:block;color:var(--muted);margin:9px 0 3px}pre{min-height:150px;white-space:pre-wrap;background:#061815;padding:12px;border-radius:10px;overflow:auto}
-    .status{color:var(--ok);font-weight:700}.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}.footer{margin-top:24px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted)}
-    @media(max-width:760px){.grid{grid-template-columns:1fr}}
+    button{background:var(--gold);color:#102b26;font-weight:800;cursor:pointer}button.secondary{background:#163f37;color:var(--text)}button:disabled{opacity:.55;cursor:not-allowed}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card{background:rgba(17,53,47,.95);border:1px solid var(--line);border-radius:15px;padding:18px}
+    .notice{padding:13px;border-left:4px solid var(--gold);background:#0c2d27;color:var(--muted)}label{display:block;color:var(--muted);margin:9px 0 3px}
+    pre{min-height:130px;white-space:pre-wrap;background:#061815;padding:12px;border-radius:10px;overflow:auto}.status{color:var(--ok);font-weight:700}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}.footer{margin-top:24px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted)}
+    .statusbar{margin:14px 0;padding:12px 14px;background:#0a2924;border:1px solid var(--line);border-radius:12px}.dot{width:10px;height:10px;border-radius:50%;display:inline-block;background:var(--warn);margin-right:8px}.dot.ok{background:var(--ok)}.dot.error{background:var(--danger)}
+    .history{margin-top:18px}.history-grid{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:14px}.history-list{margin:0;padding:0;list-style:none}.history-list li{padding:9px 0;border-bottom:1px solid var(--line)}.history-list small{display:block;color:var(--muted)}
+    .empty{color:var(--muted)}.toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.toolbar button{width:auto}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all}
+    @media(max-width:900px){.history-grid{grid-template-columns:1fr}.grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
 <main>
   <div class="top">
-    <div><span class="badge" id="modeBadge">ISOLATED UAT</span><h1 data-i="title">校鮮集外部服務測試台</h1></div>
+    <div><span class="badge" id="modeBadge">CHECKING</span><h1 data-i="title">校鮮集可操作隔離 UAT</h1></div>
     <select id="lang"><option value="zh">繁體中文</option><option value="en">English</option><option value="th">ไทย</option></select>
   </div>
-  <p class="notice" data-i="notice">僅使用 synthetic 訂單與 sandbox provider；不建立真實託運、不扣款、不開票。</p>
+  <p class="notice" id="modeNotice" data-i="notice">本環境使用 synthetic 訂單與 sandbox provider；不建立真實託運、不扣款、不開票。</p>
+  <div class="statusbar"><span><span class="dot" id="apiDot"></span><strong id="apiStatus">正在檢查操作環境…</strong></span><span id="storageStatus" class="mono">—</span></div>
   <div class="grid">
     <section class="card">
       <h2 data-i="logistics">雲鼎物流 Sandbox</h2>
-      <label data-i="org">組織 ID</label><input id="org">
+      <label data-i="org">測試組織 ID</label><input id="org">
       <label data-i="shipment">託運參考</label><input id="shipment" value="SHIPUAT001">
-      <button id="logisticsBtn" data-i="makeLabel">建立測試標籤</button>
+      <button id="logisticsBtn" data-i="makeLabel">建立測試標籤並保存</button>
       <pre id="logisticsResult">—</pre>
     </section>
     <section class="card">
       <h2 data-i="payment">Intella Scan2Pay Sandbox</h2>
       <label data-i="order">訂單編號（英數字，20 字內）</label><input id="order" value="PAYUAT001">
-      <label data-i="amount">金額（最小貨幣單位）</label><input id="amount" type="number" value="100">
-      <button id="paymentBtn" data-i="makePayment">建立測試付款</button>
+      <label data-i="amount">金額（最小貨幣單位）</label><input id="amount" type="number" value="100" min="1">
+      <button id="paymentBtn" data-i="makePayment">建立測試付款並保存</button>
       <div class="actions"><button id="successBtn" data-i="success">模擬成功通知</button><button id="failSigBtn" data-i="badSign">模擬錯誤簽章</button></div>
-      <button id="queryBtn" data-i="query">查詢付款狀態</button>
+      <button id="queryBtn" class="secondary" data-i="query">查詢付款狀態</button>
       <pre id="paymentResult">—</pre>
     </section>
   </div>
-  <p class="status" data-i="ready">準備測試。建議順序：物流標籤 → 建立付款 → 成功通知 → 查詢狀態。</p>
-  <div class="footer">© 2026 JCINN 捷州資訊. Concept showcase.</div>
+  <section class="card history">
+    <div class="top"><div><h2 data-i="history">操作歷史與稽核</h2><p class="empty" data-i="historyHelp">API 模式由資料庫保存；靜態模式只保存在目前瀏覽器。</p></div><div class="toolbar"><button id="refreshBtn" class="secondary" data-i="refresh">重新整理紀錄</button></div></div>
+    <div class="history-grid">
+      <div><h3 data-i="shipments">物流標籤</h3><ul id="logisticsHistory" class="history-list"><li class="empty">—</li></ul></div>
+      <div><h3 data-i="payments">付款狀態</h3><ul id="paymentHistory" class="history-list"><li class="empty">—</li></ul></div>
+      <div><h3 data-i="audit">稽核事件</h3><ul id="auditHistory" class="history-list"><li class="empty">—</li></ul></div>
+    </div>
+  </section>
+  <p class="status" data-i="ready">建議順序：建立物流標籤 → 建立付款 → 錯誤簽章測試 → 成功通知 → 查詢狀態 → 重新整理紀錄。</p>
+  <div class="footer">© 2026 JCINN 捷州資訊. Operational UAT.</div>
 </main>
 <script src="./config.js"></script>
 <script>
 const messages={
-  zh:{title:'校鮮集外部服務測試台',notice:'僅使用 synthetic 訂單與 sandbox provider；不建立真實託運、不扣款、不開票。',logistics:'雲鼎物流 Sandbox',payment:'Intella Scan2Pay Sandbox',org:'組織 ID',shipment:'託運參考',makeLabel:'建立測試標籤',order:'訂單編號（英數字，20 字內）',amount:'金額（最小貨幣單位）',makePayment:'建立測試付款',success:'模擬成功通知',badSign:'模擬錯誤簽章',query:'查詢付款狀態',ready:'準備測試。建議順序：物流標籤 → 建立付款 → 成功通知 → 查詢狀態。'},
-  en:{title:'Xiaoxianji External Service UAT',notice:'Synthetic orders and sandbox providers only. No real shipment, charge, or invoice is created.',logistics:'Yunding Logistics Sandbox',payment:'Intella Scan2Pay Sandbox',org:'Organization ID',shipment:'Shipment reference',makeLabel:'Create test label',order:'Order number (alphanumeric, max 20)',amount:'Amount in minor units',makePayment:'Create test payment',success:'Simulate success callback',badSign:'Simulate invalid signature',query:'Query payment status',ready:'Ready. Suggested flow: logistics label → payment → success callback → query.'},
-  th:{title:'ระบบทดสอบบริการภายนอก Xiaoxianji',notice:'ใช้เฉพาะคำสั่งซื้อจำลองและผู้ให้บริการ sandbox ไม่มีการจัดส่ง ตัดเงิน หรือออกใบกำกับเงินจริง',logistics:'Sandbox โลจิสติกส์ Yunding',payment:'Sandbox Intella Scan2Pay',org:'รหัสองค์กร',shipment:'ข้อมูลอ้างอิงการจัดส่ง',makeLabel:'สร้างฉลากทดสอบ',order:'เลขคำสั่งซื้อ (ตัวอักษร/ตัวเลข ไม่เกิน 20)',amount:'จำนวนเงินหน่วยย่อย',makePayment:'สร้างการชำระเงินทดสอบ',success:'จำลอง callback สำเร็จ',badSign:'จำลองลายเซ็นผิด',query:'ตรวจสอบสถานะการชำระเงิน',ready:'พร้อมทดสอบ: ฉลากโลจิสติกส์ → การชำระเงิน → callback สำเร็จ → ตรวจสอบสถานะ'}
+  zh:{title:'校鮮集可操作隔離 UAT',notice:'本環境使用 synthetic 訂單與 sandbox provider；不建立真實託運、不扣款、不開票。',logistics:'雲鼎物流 Sandbox',payment:'Intella Scan2Pay Sandbox',org:'測試組織 ID',shipment:'託運參考',makeLabel:'建立測試標籤並保存',order:'訂單編號（英數字，20 字內）',amount:'金額（最小貨幣單位）',makePayment:'建立測試付款並保存',success:'模擬成功通知',badSign:'模擬錯誤簽章',query:'查詢付款狀態',history:'操作歷史與稽核',historyHelp:'API 模式由資料庫保存；靜態模式只保存在目前瀏覽器。',refresh:'重新整理紀錄',shipments:'物流標籤',payments:'付款狀態',audit:'稽核事件',ready:'建議順序：建立物流標籤 → 建立付款 → 錯誤簽章測試 → 成功通知 → 查詢狀態 → 重新整理紀錄。'},
+  en:{title:'Xiaoxianji Operational UAT',notice:'Synthetic orders and sandbox providers only. No real shipment, charge, or invoice is created.',logistics:'Yunding Logistics Sandbox',payment:'Intella Scan2Pay Sandbox',org:'Test organization ID',shipment:'Shipment reference',makeLabel:'Create and save test label',order:'Order number (alphanumeric, max 20)',amount:'Amount in minor units',makePayment:'Create and save test payment',success:'Simulate success callback',badSign:'Simulate invalid signature',query:'Query payment status',history:'History and audit',historyHelp:'API mode persists in the database; static mode stays in this browser only.',refresh:'Refresh records',shipments:'Shipment labels',payments:'Payment status',audit:'Audit events',ready:'Suggested flow: label → payment → invalid signature → success callback → query → refresh.'},
+  th:{title:'ระบบ UAT ที่ใช้งานได้ของ Xiaoxianji',notice:'ใช้เฉพาะคำสั่งซื้อจำลองและผู้ให้บริการ sandbox ไม่มีการจัดส่ง ตัดเงิน หรือออกใบกำกับเงินจริง',logistics:'Sandbox โลจิสติกส์ Yunding',payment:'Sandbox Intella Scan2Pay',org:'รหัสองค์กรทดสอบ',shipment:'ข้อมูลอ้างอิงการจัดส่ง',makeLabel:'สร้างและบันทึกฉลากทดสอบ',order:'เลขคำสั่งซื้อ (ตัวอักษร/ตัวเลข ไม่เกิน 20)',amount:'จำนวนเงินหน่วยย่อย',makePayment:'สร้างและบันทึกการชำระเงินทดสอบ',success:'จำลอง callback สำเร็จ',badSign:'จำลองลายเซ็นผิด',query:'ตรวจสอบสถานะการชำระเงิน',history:'ประวัติและการตรวจสอบ',historyHelp:'โหมด API บันทึกในฐานข้อมูล โหมดสถิตบันทึกในเบราว์เซอร์นี้เท่านั้น',refresh:'รีเฟรชข้อมูล',shipments:'ฉลากจัดส่ง',payments:'สถานะการชำระเงิน',audit:'เหตุการณ์ตรวจสอบ',ready:'ขั้นตอนแนะนำ: ฉลาก → ชำระเงิน → ลายเซ็นผิด → callback สำเร็จ → ตรวจสอบ → รีเฟรช'}
 };
 const config=window.XIAOXIANJI_UAT_CONFIG||{mode:'STATIC_SANDBOX',apiBaseUrl:null};
 const headers={'Content-Type':'application/json','X-UAT-Mode':'isolated'};
-const state={payments:new Map()};
+const storageKey='xiaoxianji-uat-state-v1';
+const orgKey='xiaoxianji-uat-org-v1';
+const loadState=()=>{try{return JSON.parse(localStorage.getItem(storageKey))||{payments:{},logistics:[],audit_events:[]}}catch{return{payments:{},logistics:[],audit_events:[]}}};
+const state=loadState();
+const saveState=()=>localStorage.setItem(storageKey,JSON.stringify(state));
 const org=document.getElementById('org');
-org.value=crypto.randomUUID();
+const shipment=document.getElementById('shipment');
+const order=document.getElementById('order');
+const amount=document.getElementById('amount');
+org.value=localStorage.getItem(orgKey)||crypto.randomUUID();
+org.onchange=()=>{localStorage.setItem(orgKey,org.value);refreshHistory()};
+localStorage.setItem(orgKey,org.value);
 let paymentRef='';
-document.getElementById('modeBadge').textContent=config.mode==='STATIC_SANDBOX'?'PERMANENT DEMO':'ISOLATED UAT';
 const out=(id,value)=>{document.getElementById(id).textContent=JSON.stringify(value,null,2)};
-const digest=async value=>{
-  const bytes=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));
-  return Array.from(bytes).map(v=>v.toString(16).padStart(2,'0')).join('').slice(0,14).toUpperCase();
-};
+const digest=async value=>{const bytes=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));return Array.from(bytes).map(v=>v.toString(16).padStart(2,'0')).join('').slice(0,14).toUpperCase()};
+const now=()=>new Date().toISOString();
+const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 async function staticCall(url,options={}){
   const body=options.body?JSON.parse(options.body):{};
-  if(url==='/api/v1/uat/logistics/labels')return{status:'label_ready',reference:'YD-SBX-'+await digest(body.organization_id+':'+body.shipment_reference),payload:{provider:'yunding-digital',environment:'sandbox',label_reference:'mock-label:'+body.shipment_reference,formal_side_effects:false}};
+  if(url==='/api/v1/uat/status')return{status:'ready',environment:'static-browser',persistent_storage:false,formal_side_effects:false};
+  if(url==='/api/v1/uat/logistics/labels'){
+    const reference='YD-SBX-'+await digest(body.organization_id+':'+body.shipment_reference);
+    if(!state.logistics.some(item=>item.organization_id===body.organization_id&&item.shipment_reference===body.shipment_reference)){
+      state.logistics.unshift({organization_id:body.organization_id,shipment_reference:body.shipment_reference,provider_reference:reference,status:'label_ready',created_at_utc:now()});
+      state.audit_events.unshift({organization_id:body.organization_id,event_type:'uat.logistics.label_created',entity_reference:reference,created_at_utc:now()});saveState();
+    }
+    return{status:'label_ready',reference,payload:{provider:'yunding-digital',environment:'sandbox',label_reference:'mock-label:'+body.shipment_reference,formal_side_effects:false}};
+  }
   if(url==='/api/v1/uat/payments'){
     const reference='INT-SBX-'+await digest(body.organization_id+':'+body.order_reference);
-    state.payments.set(reference,{organization_id:body.organization_id,status:'processing'});
-    return{status:'processing',reference,payload:{provider:'intella',service_type:'OLPay',payment_url:'sandbox://'+reference,formal_side_effects:false}};
+    if(!state.payments[reference]){state.payments[reference]={organization_id:body.organization_id,order_reference:body.order_reference,payment_reference:reference,amount_minor:body.amount_minor,status:'processing',updated_at_utc:now()};state.audit_events.unshift({organization_id:body.organization_id,event_type:'uat.payment.created',entity_reference:reference,created_at_utc:now()});saveState()}
+    return{status:state.payments[reference].status,reference,payload:{provider:'intella',service_type:'OLPay',payment_url:'sandbox://'+reference,formal_side_effects:false}};
+  }
+  if(url.startsWith('/api/v1/uat/history')){
+    const id=new URLSearchParams(url.split('?')[1]).get('organization_id');
+    return{organization_id:id,formal_side_effects:false,logistics:state.logistics.filter(x=>x.organization_id===id),payments:Object.values(state.payments).filter(x=>x.organization_id===id),audit_events:state.audit_events.filter(x=>x.organization_id===id)};
   }
   const match=url.match(/\/api\/v1\/uat\/payments\/([^/?]+)/);
   if(match){
-    const reference=match[1],payment=state.payments.get(reference);
-    if(!payment)return{status:'blocked',reference,payload:{reason:'payment_not_found_or_scope_mismatch'}};
-    if(url.endsWith('/callback')){
-      if(body.signature_valid!==true)return{status:'blocked',reference,payload:{reason:'invalid_signature',formal_side_effects:false}};
-      payment.status=body.result==='0000'?'paid':'failed';
-    }
+    const reference=match[1],payment=state.payments[reference];
+    const requestedOrganization=options.method==='POST'?body.organization_id:new URLSearchParams(url.split('?')[1]||'').get('organization_id');
+    if(!payment||payment.organization_id!==requestedOrganization)return{status:'blocked',reference,payload:{reason:'payment_not_found_or_scope_mismatch'}};
+    if(url.endsWith('/callback')){if(body.signature_valid!==true)return{status:'blocked',reference,payload:{reason:'invalid_signature',formal_side_effects:false}};payment.status=body.result==='0000'?'paid':'failed';payment.updated_at_utc=now();state.audit_events.unshift({organization_id:body.organization_id,event_type:'uat.payment.status_changed',entity_reference:reference,created_at_utc:now()});saveState()}
     return{status:payment.status,reference,payload:{formal_side_effects:false}};
   }
   throw new Error('unsupported_static_route');
 }
-async function call(url,options={}){
-  if(config.apiBaseUrl===null)return staticCall(url,options);
-  const response=await fetch((config.apiBaseUrl||'')+url,{...options,headers:{...headers,...(options.headers||{})}});
-  const value=await response.json();
-  if(!response.ok)throw value;
-  return value;
-}
-document.getElementById('logisticsBtn').onclick=async()=>{try{out('logisticsResult',await call('/api/v1/uat/logistics/labels',{method:'POST',body:JSON.stringify({organization_id:org.value,shipment_reference:shipment.value})}))}catch(error){out('logisticsResult',error)}};
-document.getElementById('paymentBtn').onclick=async()=>{try{const value=await call('/api/v1/uat/payments',{method:'POST',body:JSON.stringify({organization_id:org.value,order_reference:order.value,amount_minor:Number(amount.value)})});paymentRef=value.reference;out('paymentResult',value)}catch(error){out('paymentResult',error)}};
-document.getElementById('successBtn').onclick=async()=>{if(!paymentRef)return;try{out('paymentResult',await call('/api/v1/uat/payments/'+paymentRef+'/callback',{method:'POST',body:JSON.stringify({organization_id:org.value,result:'0000',signature_valid:true})}))}catch(error){out('paymentResult',error)}};
-document.getElementById('failSigBtn').onclick=async()=>{if(!paymentRef)return;try{out('paymentResult',await call('/api/v1/uat/payments/'+paymentRef+'/callback',{method:'POST',body:JSON.stringify({organization_id:org.value,result:'0000',signature_valid:false})}))}catch(error){out('paymentResult',error)}};
-document.getElementById('queryBtn').onclick=async()=>{if(!paymentRef)return;try{out('paymentResult',await call('/api/v1/uat/payments/'+paymentRef+'?organization_id='+org.value))}catch(error){out('paymentResult',error)}};
+async function call(url,options={}){if(config.apiBaseUrl===null)return staticCall(url,options);const response=await fetch((config.apiBaseUrl||'')+url,{...options,headers:{...headers,...(options.headers||{})}});const value=await response.json();if(!response.ok)throw value;return value}
+function list(id,rows,render){const target=document.getElementById(id);target.innerHTML=rows.length?rows.map(render).join(''):'<li class="empty">尚無紀錄</li>'}
+async function refreshHistory(){try{const value=await call('/api/v1/uat/history?organization_id='+encodeURIComponent(org.value));list('logisticsHistory',value.logistics,row=>`<li><strong>${escapeHtml(row.shipment_reference)}</strong><small>${escapeHtml(row.status)} · ${escapeHtml(row.provider_reference)}</small></li>`);list('paymentHistory',value.payments,row=>`<li><strong>${escapeHtml(row.order_reference)}</strong><small>${escapeHtml(row.status)} · ${escapeHtml(row.payment_reference)}</small></li>`);list('auditHistory',value.audit_events,row=>`<li><strong>${escapeHtml(row.event_type)}</strong><small>${escapeHtml(row.entity_reference)} · ${escapeHtml(row.created_at_utc)}</small></li>`)}catch(error){document.getElementById('apiStatus').textContent='讀取紀錄失敗：'+(error.detail||error.message||'unknown')}}
+async function checkStatus(){try{const value=await call('/api/v1/uat/status');document.getElementById('apiDot').className='dot ok';document.getElementById('apiStatus').textContent=value.persistent_storage?'持久 API UAT 已連線':'瀏覽器模擬模式可操作';document.getElementById('storageStatus').textContent=value.persistent_storage?'PostgreSQL persistent':'Browser local only';document.getElementById('modeBadge').textContent=value.persistent_storage?'OPERATIONAL UAT':'PERMANENT DEMO'}catch(error){document.getElementById('apiDot').className='dot error';document.getElementById('apiStatus').textContent='UAT API 無法連線';document.getElementById('storageStatus').textContent='fail-closed'}}
+document.getElementById('logisticsBtn').onclick=async()=>{try{out('logisticsResult',await call('/api/v1/uat/logistics/labels',{method:'POST',body:JSON.stringify({organization_id:org.value,shipment_reference:shipment.value})}));await refreshHistory()}catch(error){out('logisticsResult',error)}};
+document.getElementById('paymentBtn').onclick=async()=>{try{const value=await call('/api/v1/uat/payments',{method:'POST',body:JSON.stringify({organization_id:org.value,order_reference:order.value,amount_minor:Number(amount.value)})});paymentRef=value.reference;out('paymentResult',value);await refreshHistory()}catch(error){out('paymentResult',error)}};
+document.getElementById('successBtn').onclick=async()=>{if(!paymentRef)return;try{out('paymentResult',await call('/api/v1/uat/payments/'+paymentRef+'/callback',{method:'POST',body:JSON.stringify({organization_id:org.value,result:'0000',signature_valid:true})}));await refreshHistory()}catch(error){out('paymentResult',error)}};
+document.getElementById('failSigBtn').onclick=async()=>{if(!paymentRef)return;try{out('paymentResult',await call('/api/v1/uat/payments/'+paymentRef+'/callback',{method:'POST',body:JSON.stringify({organization_id:org.value,result:'0000',signature_valid:false})}));await refreshHistory()}catch(error){out('paymentResult',error)}};
+document.getElementById('queryBtn').onclick=async()=>{if(!paymentRef)return;try{out('paymentResult',await call('/api/v1/uat/payments/'+paymentRef+'?organization_id='+encodeURIComponent(org.value)))}catch(error){out('paymentResult',error)}};
+document.getElementById('refreshBtn').onclick=refreshHistory;
 document.getElementById('lang').onchange=event=>{const locale=event.target.value;document.documentElement.lang=locale==='zh'?'zh-Hant-TW':locale;document.querySelectorAll('[data-i]').forEach(element=>element.textContent=messages[locale][element.dataset.i])};
+checkStatus().then(refreshHistory);
 </script>
 </body></html>
