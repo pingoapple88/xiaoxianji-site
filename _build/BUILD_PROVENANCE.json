@@ -1,0 +1,11 @@
+{
+  "schema_version": "XJ-BUILD-METADATA-01",
+  "page_revision": "e7be1a3abdcb28bfe8308416322adfc88f9d0a10",
+  "parent": "e7be1a3abdcb28bfe8308416322adfc88f9d0a10",
+  "rollback": "e7be1a3abdcb28bfe8308416322adfc88f9d0a10",
+  "branch": "main",
+  "stamped": true,
+  "mode": "DEMO_MOCK",
+  "formal_connections": false,
+  "public_source_whitelist": true
+}
